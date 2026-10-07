@@ -50,6 +50,50 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured()
 // ==============================================================================
 
 /**
+ * Dynamically resolves the OAuth redirect URL based on the current SkillBridge AI application URL / environment:
+ * - Local development: dynamically uses the current local origin (e.g. http://localhost:3000)
+ * - Production: dynamically uses the current deployed SkillBridge AI domain / origin
+ * - Strips any trailing slashes, hash fragments, or query strings to ensure exact whitelist matching in Supabase
+ */
+export function getAuthRedirectUrl(): string {
+  if (typeof window !== 'undefined' && window.location) {
+    const origin = window.location.origin;
+    const hostname = window.location.hostname;
+
+    // Detect local development environment
+    const isLocalhost =
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '[::1]' ||
+      hostname.endsWith('.localhost');
+
+    if (isLocalhost) {
+      return origin.replace(/\/+$/, '');
+    }
+
+    // In deployed/production environment: check environment variable override if present
+    const metaEnv = typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env as any) : {};
+    const configuredAppUrl = metaEnv.VITE_APP_URL || metaEnv.APP_URL;
+
+    if (configuredAppUrl && typeof configuredAppUrl === 'string' && configuredAppUrl.startsWith('http')) {
+      try {
+        const parsed = new URL(configuredAppUrl);
+        return parsed.origin.replace(/\/+$/, '');
+      } catch {
+        // Fall back to window.location.origin
+      }
+    }
+
+    return origin.replace(/\/+$/, '');
+  }
+
+  // Fallback for non-browser / build context
+  const metaEnv = typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env as any) : {};
+  const fallback = metaEnv.VITE_APP_URL || metaEnv.APP_URL || '';
+  return fallback.replace(/\/+$/, '');
+}
+
+/**
  * Checks whether the Google provider is actively enabled in the Supabase Auth project
  */
 export async function checkGoogleProviderEnabled(): Promise<boolean> {
@@ -71,6 +115,7 @@ export async function checkGoogleProviderEnabled(): Promise<boolean> {
 /**
  * Initiates real Google OAuth with Supabase.
  * Forces the authentic Google Account Chooser via prompt: 'select_account'.
+ * Redirects back dynamically to the current SkillBridge AI application URL.
  */
 export async function signInWithGoogle() {
   if (!supabase || !isSupabaseConfigured()) {
@@ -85,7 +130,7 @@ export async function signInWithGoogle() {
     );
   }
 
-  const redirectUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  const redirectUrl = getAuthRedirectUrl();
   const isFramed = typeof window !== 'undefined' && window.self !== window.top;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -155,7 +200,7 @@ export async function resetPassword(email: string) {
   if (!supabase || !isSupabaseConfigured()) {
     throw new Error('Supabase credentials not configured.');
   }
-  const redirectUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  const redirectUrl = getAuthRedirectUrl();
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: redirectUrl,
   });

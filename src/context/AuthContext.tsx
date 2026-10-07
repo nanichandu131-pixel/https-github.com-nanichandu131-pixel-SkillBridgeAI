@@ -81,42 +81,80 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Synchronize with Supabase Auth session & OAuth redirects
   useEffect(() => {
-    if (!isSupabaseConnected || !supabase) return;
+    const sbClient = supabase;
+    if (!isSupabaseConnected || !sbClient) return;
 
     // Handle PKCE code exchange if redirected with ?code=...
-    if (typeof window !== 'undefined' && window.location.search.includes('code=')) {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get('code');
+      const errorParam = url.searchParams.get('error');
+      const errorDesc = url.searchParams.get('error_description');
+
       if (code) {
-        supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
-          if (!error && data?.session?.user) {
-            handleSupabaseUserSession(data.session.user);
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
-        });
+        sbClient.auth
+          .exchangeCodeForSession(code)
+          .then(async ({ data, error }) => {
+            if (!error && data?.session?.user) {
+              await handleSupabaseUserSession(data.session.user);
+              setShowAuthModal(false);
+            } else if (error) {
+              console.warn('exchangeCodeForSession warning:', error.message);
+              // Fallback: check if session was synchronized
+              const { data: sessData } = await sbClient.auth.getSession();
+              if (sessData?.session?.user) {
+                await handleSupabaseUserSession(sessData.session.user);
+                setShowAuthModal(false);
+              }
+            }
+            // Clean OAuth parameters from the browser URL after authentication
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+          })
+          .catch(async (err) => {
+            console.warn('OAuth exchange error:', err);
+            const { data: sessData } = await sbClient.auth.getSession();
+            if (sessData?.session?.user) {
+              await handleSupabaseUserSession(sessData.session.user);
+              setShowAuthModal(false);
+            }
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+          });
+      } else if (errorParam || errorDesc) {
+        console.warn('OAuth redirect returned error:', errorDesc || errorParam);
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
       }
     }
 
     // Check existing active session
-    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+    sbClient.auth.getSession().then(async ({ data: { session }, error }) => {
       if (error) {
         console.warn('Supabase getSession error:', error.message);
         return;
       }
       if (session?.user) {
         await handleSupabaseUserSession(session.user);
+        setShowAuthModal(false);
         if (typeof window !== 'undefined' && window.location.hash.includes('access_token=')) {
-          window.history.replaceState({}, document.title, window.location.pathname);
+          const cleanUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
         }
       }
     });
 
     // Subscribe to Auth state changes (Google OAuth redirect, Sign In, Sign Out, Token Refresh)
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: authListener } = sbClient.auth.onAuthStateChange(async (event, session) => {
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && session?.user) {
         await handleSupabaseUserSession(session.user);
-        if (typeof window !== 'undefined' && window.location.hash.includes('access_token=')) {
-          window.history.replaceState({}, document.title, window.location.pathname);
+        setShowAuthModal(false);
+        if (
+          typeof window !== 'undefined' &&
+          (window.location.search.includes('code=') || window.location.hash.includes('access_token='))
+        ) {
+          const cleanUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -130,6 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Helper to extract user & profile from Supabase Auth User
   const handleSupabaseUserSession = async (sbUser: any) => {
+    setShowAuthModal(false);
     const meta = sbUser.user_metadata || {};
     const appMeta = sbUser.app_metadata || {};
 
