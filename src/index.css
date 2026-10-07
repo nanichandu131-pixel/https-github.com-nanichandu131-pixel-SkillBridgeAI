@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --canvas-bg: #f8fafc;
+    --canvas-fg: #0f172a;
+    --panel-border: rgba(226, 232, 240, 0.9);
+  }
+
+  .dark {
+    --canvas-bg: #090d16;
+    --canvas-fg: #f8fafc;
+    --panel-border: rgba(30, 41, 59, 0.85);
+  }
+
+  body {
+    background-color: var(--canvas-bg);
+    color: var(--canvas-fg);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Strict Tabular Numerals for Metrics & Scores */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Subtle Layered Surfaces & 3D Depth Utilities */
+.depth-surface {
+  background: white;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px -2px rgba(15, 23, 42, 0.02);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+}
+
+.dark .depth-surface {
+  background: #0f172a;
+  border: 1px solid rgba(30, 41, 59, 0.9);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 24px -4px rgba(0, 0, 0, 0.45);
+}
+
+.depth-surface-hover:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06), 0 12px 30px -4px rgba(15, 23, 42, 0.04);
+  border-color: rgba(203, 213, 225, 0.95);
+}
+
+.dark .depth-surface-hover:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), 0 16px 36px -6px rgba(0, 0, 0, 0.6);
+  border-color: rgba(51, 65, 85, 0.9);
+}
+
+/* Button Press Tactile Feedback */
+.btn-tactile {
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+
+.btn-tactile:active {
+  transform: scale(0.985);
+}
+
+/* Radial Career Readiness SVG animations */
+@keyframes dash-progress {
+  from {
+    stroke-dashoffset: 283;
+  }
+}
+
+.radial-progress-ring {
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  animation: dash-progress 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

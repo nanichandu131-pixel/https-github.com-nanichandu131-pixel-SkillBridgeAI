@@ -1,0 +1,6 @@
+{
+  "name": "SkillBridge AI",
+  "description": "Build Skills. Bridge Careers. AI-powered career and interview preparation platform for students and early-career developers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
