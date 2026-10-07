@@ -84,6 +84,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const sbClient = supabase;
     if (!isSupabaseConnected || !sbClient) return;
 
+    // Normalize URL if opened on stale /chat route from previous app
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/chat')) {
+      window.history.replaceState({}, document.title, '/');
+    }
+
     // Handle PKCE code exchange if redirected with ?code=...
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
@@ -108,7 +113,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             }
             // Clean OAuth parameters from the browser URL after authentication
-            const cleanUrl = window.location.origin + window.location.pathname;
+            const targetPath = window.location.pathname.startsWith('/chat') ? '/' : (window.location.pathname || '/');
+            const cleanUrl = window.location.origin + targetPath;
             window.history.replaceState({}, document.title, cleanUrl);
           })
           .catch(async (err) => {
@@ -118,12 +124,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               await handleSupabaseUserSession(sessData.session.user);
               setShowAuthModal(false);
             }
-            const cleanUrl = window.location.origin + window.location.pathname;
+            const targetPath = window.location.pathname.startsWith('/chat') ? '/' : (window.location.pathname || '/');
+            const cleanUrl = window.location.origin + targetPath;
             window.history.replaceState({}, document.title, cleanUrl);
           });
       } else if (errorParam || errorDesc) {
         console.warn('OAuth redirect returned error:', errorDesc || errorParam);
-        const cleanUrl = window.location.origin + window.location.pathname;
+        const targetPath = window.location.pathname.startsWith('/chat') ? '/' : (window.location.pathname || '/');
+        const cleanUrl = window.location.origin + targetPath;
         window.history.replaceState({}, document.title, cleanUrl);
       }
     }

@@ -50,17 +50,23 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured()
 // ==============================================================================
 
 /**
- * Dynamically resolves the OAuth redirect URL based on the current SkillBridge AI application URL / environment:
- * - Local development: dynamically uses the current local origin (e.g. http://localhost:3000)
- * - Production: dynamically uses the current deployed SkillBridge AI domain / origin
- * - Strips any trailing slashes, hash fragments, or query strings to ensure exact whitelist matching in Supabase
+ * Canonical production application URL for SkillBridge AI
+ */
+export const SKILLBRIDGE_PROD_URL = 'https://skillbridge-ai-2662.ai.studio';
+
+/**
+ * Dynamically resolves the OAuth redirect URL for SkillBridge AI:
+ * - Local development: dynamically uses the current local origin (e.g. http://localhost:3000) only when actually running locally.
+ * - Production: uses https://skillbridge-ai-2662.ai.studio (or configured VITE_APP_URL / APP_URL).
+ * - Never redirects to old DoubtAI or localhost:3000/chat/... URLs.
+ * - Strips any trailing slashes, hash fragments, or query strings to ensure exact whitelist matching in Supabase.
  */
 export function getAuthRedirectUrl(): string {
   if (typeof window !== 'undefined' && window.location) {
     const origin = window.location.origin;
     const hostname = window.location.hostname;
 
-    // Detect local development environment
+    // Detect local development environment: only when running locally on localhost
     const isLocalhost =
       hostname === 'localhost' ||
       hostname === '127.0.0.1' ||
@@ -80,16 +86,21 @@ export function getAuthRedirectUrl(): string {
         const parsed = new URL(configuredAppUrl);
         return parsed.origin.replace(/\/+$/, '');
       } catch {
-        // Fall back to window.location.origin
+        // Fall back to production URL
       }
     }
 
-    return origin.replace(/\/+$/, '');
+    if (origin && origin.includes('skillbridge-ai-2662.ai.studio')) {
+      return origin.replace(/\/+$/, '');
+    }
+
+    // Canonical production URL
+    return SKILLBRIDGE_PROD_URL;
   }
 
   // Fallback for non-browser / build context
   const metaEnv = typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env as any) : {};
-  const fallback = metaEnv.VITE_APP_URL || metaEnv.APP_URL || '';
+  const fallback = metaEnv.VITE_APP_URL || metaEnv.APP_URL || SKILLBRIDGE_PROD_URL;
   return fallback.replace(/\/+$/, '');
 }
 

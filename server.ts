@@ -137,12 +137,12 @@ async function callGeminiWithFailover(
 // ==========================================
 
 app.get('/api/config', (req, res) => {
-  const appUrl = (process.env.APP_URL || process.env.VITE_APP_URL || '').trim();
+  const appUrl = (process.env.APP_URL || process.env.VITE_APP_URL || 'https://skillbridge-ai-2662.ai.studio').trim();
   return res.json({
     supabaseUrl: supabaseUrl || null,
     supabaseAnonKey: supabaseAnonKey || null,
     isSupabaseConfigured: Boolean(supabaseUrl && supabaseAnonKey && supabaseUrl.startsWith('http')),
-    appUrl: appUrl || null,
+    appUrl: appUrl,
   });
 });
 
